@@ -6,23 +6,23 @@
 #include <cstring>
 
 using namespace std;
-
+//listo
 struct plataform{
 	string id;
 	int length;
 };
-
+//listo
 struct yard{
 	string id;
 	int capa;
 };
-
+//listo
 struct facility{
 	string id;
 	string type;
 	int length;
 };
-
+//listo
 struct gate{
 	string resource_id;
 	string side;
@@ -31,7 +31,7 @@ struct gate{
 	string neighborGateSide;
 	int neighborGateIndex;	
 };
-
+//listo
 struct train{
 	string id;
 	//unsigned int id;
@@ -42,7 +42,7 @@ struct train{
 	//unsigned int remTBM;
 	//bool reused;
 };
-
+//listo
 struct train_category{
 	string id;
 	//unsigned int id;

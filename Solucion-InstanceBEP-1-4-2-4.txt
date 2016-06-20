@@ -1,0 +1,11 @@
+Duracion total de evacuacion: 19
+
+Tiempo de ejecucion: 3.98665 segundos
+
+Bus 1: (1,1)  (2,1)  Costo Total: 17
+Bus 2: (1,1)  (2,1)  Costo Total: 17
+Bus 3: (1,1)  (2,1)  Costo Total: 17
+Bus 4: (3,2)  (4,2)  (4,2)  (4,2)  Costo Total: 19 *
+
+Cantidad de personas en el refugio 1: 120
+Cantidad de personas en el refugio 2: 80

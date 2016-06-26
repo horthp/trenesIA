@@ -28,16 +28,22 @@ typedef struct solution{
 	string Complement;
 }sol;
 
-typedef struct departures_matching{
+typedef struct departure_matching{
 	string departures;
-	string train;
+	vector<string> arrivals;
+	vector<string> train;
+	vector<int> used_train;
 	bool arr;
-	string arrivals;
-	float cost;
+	//Costo asociado por dejar la salida sin cubrir
+	float cost0;
+	//Costo por seleccionar el tren i 
+	vector <float> cost;
+	int dom;
 	bool used;
-	bool revised;
 }depMatch;
 
+
+vector <depMatch> test, final;
 
 
 typedef struct time{
@@ -56,6 +62,11 @@ typedef struct date{
 	double totalmin;
 }date;
 
+typedef struct platforms_departure{
+};
+
+typedef struct plataforms_arrival{
+};
 
 date get_date(string v){
 	date d;
@@ -112,12 +123,13 @@ vector< vector<string> > loadData(const char* filename, int value) {
 /*Genera un domino para cada departure guardando los posibles trenes con los que pueden ser asignados y sus respectivos costos*/
 void domain_dep(vector<depMatch> &match){
 	vector< vector<string> > init_trains = initialTrains;
-	float cost = 0;
+	float c;
+	float cost0 = 0;
 	int difd = 0;
 	int difa = 0;
 	int flag;
+	int dom;
 	size_t sz;
-	//vector<depMatch> match;
 	depMatch match_aux;
 	ttime dept, arrt, restime;
 	date depd, arrd;	
@@ -137,77 +149,211 @@ void domain_dep(vector<depMatch> &match){
 						/*Se verifica que el tiempo entre llegada y salida sea mayor o igual 
 						al tiempo minimo que se debe estar en el recuerso*/
 						if(depd.totalmin - arrd.totalmin >= restime.totalmin ){
-							dept = get_time(departures[i][5]);
-							arrt = get_time(arrivals[j][8]);
-							//cout<<departures[i][0]<<endl;
-
-							/*Se verifica que el tiempo entre llegada y salida sea menor/igual
-							 que el tiempo maximo que puede estar el tren en la plataforma tras una llegada* /
-							/*Se verifica que el tiempo entre llegada y salida sea menor/igual
-							 que el tiempo maximo que puede estar el tren en la plataforma antes de la salida */
-							/*if((depd.totalmin - arrd.totalmin <= arrt.totalmin) && (depd.totalmin - arrd.totalmin <=  dept.totalmin)){
-								dept = get_time(departures[i][4]);
-								arrt = get_time(arrivals[j][7]);
-								if((depd.totalmin - arrd.totalmin) > arrt.totalmin){
-									difa = (depd.totalmin - arrd.totalmin) - arrt.totalmin;
-									cost = cost + (difa*60)*atof(parameters[10][1].c_str());
-								}	
-								if((depd.totalmin - arrd.totalmin) > dept.totalmin){	
-									difd = (depd.totalmin - arrd.totalmin) - dept.totalmin;
-									cost = cost + (difd*60)*atof(parameters[10][1].c_str());
-									//cout<<"costo 2: "<<cost<<endl;
+							match_aux.arrivals.push_back(arrivals[j][0]);
+							match_aux.train.push_back(arrivals[j][1]);
+							match_aux.used_train.push_back(0);
+							flag = 1;
+							
+							//Se asigna un costo en caso de no cumplir con la reutilizacion de trenes
+							for(size_t k = 1;k<reuses.size();k++){	
+								if(departures[i][0].compare(reuses[k][1]) == 0){
+									if(arrivals[j][0].compare(reuses[k][0])){
+										match_aux.cost.push_back(atof(parameters[11][1].c_str()));
+									}else{
+										match_aux.cost.push_back(0);
+									}	
 								}
-								for(size_t k = 1;k<reuses.size();k++){
-									if(departures[i][0].compare(reuses[k][1])== 1){
-										if(arrivals[j][0].compare(reuses[k][0]) == 0){
-											cost = cost + atof(reuses[11][1].c_str());
-											//cout<<"costo 3: "<<cost<<endl;
-										}
-									}
-								}*/
-								match_aux.arrivals = arrivals[j][0];
-								match_aux.train = arrivals[j][1];
-								match_aux.cost = cost;
-								match_aux.departures = departures[i][0];
-								match_aux.arr = 1;
-								match_aux.used = 0;
-								match_aux.revised = 0;
-								match.push_back(match_aux);
-
-								flag = 1;
 							}
 						}
 					}
+
 				}
-				if(flag == 0){
-					cout<<init_trains.size()<<endl;
-					if((init_trains.size() - 1) > 0){
-						match_aux.train = init_trains[1][0];
-						match_aux.departures = departures[i][0];
-						match_aux.arr = 0;
-						match_aux.cost = 0;
-						match_aux.used = 0;
-						match_aux.revised = 0;
-						match.push_back(match_aux);
-						init_trains.erase(init_trains.begin() + 1);
-					}
-					else{
-						match_aux.departures = "uncov";
-						match_aux.arr = 0;
-						match_aux.arrivals = " ";
-						match_aux.train = " ";
-						match_aux.cost = atof(parameters[16][1].c_str());
-						match.push_back(match_aux);
+
+			}
+			//Si la salida actual no esta en reuses se asigna costo 0 al vector de costos
+			for(size_t k = 1;k<reuses.size();k++){	
+				if(departures[i][0].compare(reuses[k][1])){
+					for(size_t j= 0; j< match_aux.arrivals.size();j++){
+						match_aux.cost.push_back(0);
 					}
 				}	
+			}	
+
+			
+			if(flag == 1){
+					match_aux.cost0 = cost0;
+					match_aux.departures = departures[i][0];
+					match_aux.dom = match_aux.train.size();
+					match_aux.arr = 1;
+					match_aux.used = 0;
+					match.push_back(match_aux);
 			}
+			if(flag == 0){
+				cout<<init_trains.size()<<endl;
+				if((init_trains.size() - 1) > 0){
+					match_aux.train.push_back(init_trains[1][0]);
+					match_aux.arrivals.push_back("init");
+					match_aux.departures = departures[i][0];
+					match_aux.arr = 0;
+					match_aux.cost0 = 0;
+					match_aux.used = 0;
+					match_aux.used_train.push_back(0);
+					match_aux.cost.push_back(0);
+					match_aux.dom = match_aux.train.size();
+					match.push_back(match_aux);
+					init_trains.erase(init_trains.begin() + 1);
+				}					
+				else{
+					match_aux.departures = "uncov";
+					match_aux.arr = 0;
+					match_aux.arrivals.push_back("void");
+					match_aux.train.push_back("void");
+					match_aux.dom = 0;
+					match_aux.used_train.push_back(-1);
+					match_aux.cost0 = atof(parameters[16][1].c_str());
+					match.push_back(match_aux);
+				}
+			}
+
+			match_aux.train.clear();
+			match_aux.arrivals.clear();
+			match_aux.cost.clear();
+
+
 		}
 	}
-//}
+	/*
+	for(size_t a = 0; a < match.size(); a++){
+		cout<<match[a].departures<<"|"<<endl;
+		for(size_t b= 0; b<match[a].train.size();b++){
+			cout<<match[a].arrivals[b]<<"|";}
+		cout<<endl;	
+		for(size_t d=0; d < match[a].cost.size();d++){
+			cout<<"|"<<match[a].cost[d];
+		}
+	cout<<endl;	
+	} */
+}
 
-vector <depMatch> test;
+void fc_gbj_match(vector<depMatch> &final,int l, int r){
+	vector <depMatch> aux;
+	int cost_i = 0;
+	int a = l;
+	int b = r;
+	int sum = 0;
+	depMatch mt;
+	aux = test;
+	int c,size;
+	for(size_t i=0; i < aux.size(); i++){
+		
+		// Asignacion de tren a la primera salida.
+		if(final.empty()){
+			mt.departures = aux[i].departures;
+			mt.arr = aux[i].arr;
+			mt.cost0 = aux[i].cost0;
+			mt.arrivals.push_back(aux[i].arrivals[0]);
+			mt.train.push_back(aux[i].train[0]);
+			mt.cost.push_back(aux[i].cost[0]);
+			mt.used_train.push_back(1);
+			mt.dom = mt.train.size();
+			//Se guardan los valores en el archivo final
+			final.push_back(mt);
+			aux[i].used = 1;
+			aux[i].used_train[0] = 1;
+			a = i;
+			b = 0;
+			//Se resetean los vectores
+			mt.used_train.clear();
+			mt.train.clear();
+			mt.arrivals.clear();
+			mt.cost.clear();
+			cout<<final[0].cost[0]<<endl;
+			//si otra salida es compatible con el tren recien asignado se marca como usado.
+			for(size_t j=0;j<aux.size();j++){
+				for(size_t k=0; k< aux[j].train.size();k++){
+					if(aux[j].train[k].compare(final[0].train[0]) == 0){
+						aux[j].used_train[k] = 1;
+					}
+				}
+			}		
+		}
+		else{
+			c = -1;
+			// Si la salida no est cubierta.
+			if(aux[i].used == 0 ){
+				/* Asignacion de datos */
+				mt.departures = aux[i].departures;
+				mt.arr = aux[i].arr;
+				mt.used_train.push_back(1);
+				mt.cost0 = aux[i].cost0;
+				//se asigna el tren a la salida actual
+				for(size_t s=0;s<aux[i].train.size();s++){
+					//Se verifica que el tren no este en uso
+					if(aux[i].used_train[s] == 0 ){
+						//Se selecciona el primer tren disponible
+						mt.train.push_back(aux[i].train[s]);
+						mt.arrivals.push_back(aux[i].arrivals[s]);
+						mt.cost.push_back(aux[i].cost[s]);
+						aux[i].used_train[s] = 1;
+						break;
+
+					}
+				}
+				mt.dom = mt.train.size();
+				aux[i].used = 1;
+				final.push_back(mt);
+				size = final.size();
+				c = final[size - 1].train.size();
+				
+				if(c > -1 ){
+					//Se realiza el filtrado en base al tren seleccionado para casa uno de los dominios de las demás salidas
+					for(size_t j=0;j<aux.size();j++){
+						sum = aux[j].train.size();
+						for(size_t k=0; k< aux[j].train.size()-1;k++){
+							if(aux[j].train[k].compare(final[size-1].train[c-1]) == 0){
+								aux[j].used_train[k] = 1;
+							}
+							//si hay alguna salida sin trenes en su dominio sum = 0
+							if(aux[j].used_train[k] == 1){
+								sum = sum - 1;
+								a = k;
+							}
+						}
+						//Se llama recursivamente a la funcion nuevamente
+					/*	if(sum == 0){
+							cout<<aux[j].departures<<"| dominio vacio"<<endl;
+							fc_gbj_match(final,j,a,0);
+						}*/
+					}
+				}	
+
+				//Se resetean los vectores
+				mt.used_train.clear();
+				mt.train.clear();
+				mt.arrivals.clear();
+				mt.cost.clear();
+			}	
+		}
+	}
+
+	for(size_t i =0; i< final.size(); i++){
+		for(size_t j=0; j<final[i].cost.size();j++){
+			cost_i = cost_i + final[i].cost[j];
+		}
+	}
+	cout<<cost_i<<endl;
+	/*
+	if(costo > cost_i){
+		fc_gbj_match(final,b,a,cost_i);
+	}
+	else{
+	} */
 
 
+}
+
+
+/*
 void forward_checking_gbj_matching(vector<depMatch> &final, int flag){
 	int count;
 	int cost = 0;
@@ -285,10 +431,10 @@ void forward_checking_gbj_matching(vector<depMatch> &final, int flag){
 			}	
 
 		}
-		/*for(size_t l = 0;l<imatch.size();l++){
+		for(size_t l = 0;l<imatch.size();l++){
 			if(imatch[l].revised == 1)
 				cout<<"salida->"<<imatch[l].departures<<"| train->"<<imatch[l].train<<endl;
-		}*/
+		}
 
 		//cout<<imatch[i].departures<<"|"<<imatch[i].train<<endl;   
 		cout<<"fin iteracion: "<<i<<endl;
@@ -302,8 +448,14 @@ void forward_checking_gbj_matching(vector<depMatch> &final, int flag){
 	cout<<"Cantidad trenes asignados: "<<final.size()<<"| Count: "<< count<<endl;
 	cout << "Departures: "<<departures.size() - 1 << endl;
 }	
-
+*/
 void platform_assignment(){
+
+
+
+
+
+
 }
 
 void arrivals_departures_sequence_assigner(){
@@ -337,22 +489,40 @@ int main(int argc, char **argv){
 
  
 	vector <depMatch> final;
-	float cost = 0;
-	depMatch m;
-	m.departures = " ";
-	m.cost = 0;
+	int a,b;
+
 	//cout<<arrivals.size()<<endl;
 	domain_dep(test);
 	cout<<"Dominio depX"<<endl;
 	for(size_t l=0;l<test.size();l++){
-		cost = cost + test[l].cost;
-		cout<<"departures: "<<test[l].departures<<"|| train: "<<test[l].train<<" || de arrivals: "
-		<<test[l].arrivals<< " || costo: "<< test[l].cost<< endl;
+		//cost = cost + test[l].cost;
+		cout<<"departures: "<<test[l].departures
+		<<" |costo: "<<test[l].cost0<<endl;
+		//cout<<test[l].train.size();
+		for(size_t i=0; i< test[l].train.size();i++){
+			cout<<"	|| train: "<<test[l].train[i]//<<endl;
+				<<"| costo:  "<< test[l].cost[i]<<endl;
+		}
+		cout<<"	|| #dominio: "<<test[l].dom<<endl;
 	}
-	cout<<"Costo total "<<cost<<endl;
+	//cout<<"Costo total "<<cost<<endl;
 	cout<<endl;
-
-	forward_checking_gbj_matching(final,0);
+	fc_gbj_match(final,-1,-1);
+	cout<<"asignaciones"<<endl;
+	for(size_t l=0;l<final.size();l++){
+		//cost = cost + test[l].cost;
+		cout<<"departures: "<<final[l].departures
+			<<" |costo "<<final[l].cost0<<endl;
+		//cout<<test[l].train.size();
+		for(size_t i=0; i< final[l].train.size();i++){
+			if(final[l].used_train[i] == 1)
+				cout<<"	|| train: "<<final[l].train[i]<<" Come from "
+					<<final[l].arrivals[i]
+					<<" Costo: "<<final[l].cost[i]<<endl;
+		}
+		//cout<<"	|| #dominio: "<<test[l].dom<<endl;
+	}
+	//forward_checking_gbj_matching(final,0);
 	/*/cout<< "D"<<endl;	
 	/
 	date d;
